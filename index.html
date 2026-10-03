@@ -21,6 +21,9 @@
 
     <link rel="stylesheet" href="./style.css?v=20261002">
 
+    <link rel="icon" href="./assets/cyberguard-logo.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./assets/cyberguard-logo.svg">
+
 </head>
 
 <body>
@@ -40,7 +43,13 @@
             <div class="brand">
 
                 <div class="brand-mark">
-                    <span class="brand-shield">◆</span>
+                    <img
+                        class="brand-logo"
+                        src="assets/cyberguard-logo.svg"
+                        alt="CyberGuard"
+                        width="34"
+                        height="34"
+                    >
                 </div>
 
                 <div class="brand-text">
@@ -1785,7 +1794,13 @@
                                 </div>
 
                                 <div class="raw-result">
-                                    <button class="raw-toggle" type="button" data-target="takeoverRaw">View raw engine response <span>+</span></button>
+                                    <div class="raw-result-actions">
+                                        <button class="raw-toggle" type="button" data-target="takeoverRaw">View raw engine response <span>+</span></button>
+                                        <button class="export-button" id="exportTakeoverPdf" type="button" disabled>
+                                            <span class="export-icon">↓</span>
+                                            <span>Export PDF report</span>
+                                        </button>
+                                    </div>
                                     <pre id="takeoverRaw" class="raw-content hidden"></pre>
                                 </div>
                             </div>
@@ -1934,7 +1949,13 @@
                                 </div>
 
                                 <div class="raw-result">
-                                    <button class="raw-toggle" type="button" data-target="impersonationRaw">View raw engine response <span>+</span></button>
+                                    <div class="raw-result-actions">
+                                        <button class="raw-toggle" type="button" data-target="impersonationRaw">View raw engine response <span>+</span></button>
+                                        <button class="export-button" id="exportImpersonationPdf" type="button" disabled>
+                                            <span class="export-icon">↓</span>
+                                            <span>Export PDF report</span>
+                                        </button>
+                                    </div>
                                     <pre id="impersonationRaw" class="raw-content hidden"></pre>
                                 </div>
                             </div>
@@ -2213,6 +2234,8 @@
 
 
     <!-- Main JavaScript -->
+    <script src="./vendor/jspdf.umd.min.js?v=2.5.1" defer></script>
+    <script src="./pdf-report.js?v=20261003" defer></script>
     <script src="./script.js?v=20261003" defer></script>
 
 </body>

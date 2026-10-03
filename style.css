@@ -185,15 +185,16 @@ a {
 
     border-radius: 9px;
 
-    background:
-        linear-gradient(
-            135deg,
-            #2563eb,
-            #06b6d4
-        );
+    overflow: hidden;
 
     box-shadow:
         0 0 28px rgba(37, 99, 235, 0.28);
+}
+
+.brand-logo {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .brand-shield {
@@ -3586,3 +3587,69 @@ body::after {
 
 /* Impersonation message excerpt inside a risk card. */
 .takeover-excerpt { margin:8px 0 0; padding:7px 9px; color:var(--text-muted); background:rgba(255,255,255,.015); border-left:2px solid rgba(148,163,184,.22); border-radius:0 6px 6px 0; font-size:8px; line-height:1.6; }
+
+/* ============================================================
+   RESULT EXPORT
+   ============================================================ */
+
+.raw-result-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.raw-result-actions .raw-toggle {
+    flex: 1 1 auto;
+}
+
+.export-button {
+    flex: 0 0 auto;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 9px 13px;
+
+    color: var(--blue-bright);
+    background: rgba(59, 130, 246, 0.07);
+
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    border-radius: 7px;
+
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+
+    cursor: pointer;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.export-button:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.14);
+    border-color: rgba(96, 165, 250, 0.45);
+    color: #93c5fd;
+    transform: translateY(-1px);
+}
+
+.export-button:disabled {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.015);
+    border-color: var(--border);
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.export-button.exporting .export-icon {
+    animation: cg-export-spin 700ms linear infinite;
+}
+
+@keyframes cg-export-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+    .raw-result-actions { flex-direction: column; }
+}

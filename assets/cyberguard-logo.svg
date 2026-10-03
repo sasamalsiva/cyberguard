@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CyberGuard">
+    <title>CyberGuard</title>
+
+    <defs>
+        <linearGradient id="cgShield" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3b82f6"/>
+            <stop offset="55%" stop-color="#2563eb"/>
+            <stop offset="100%" stop-color="#06b6d4"/>
+        </linearGradient>
+
+        <linearGradient id="cgCore" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+            <stop offset="100%" stop-color="#dbeafe" stop-opacity="0.92"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Shield silhouette -->
+    <path
+        d="M32 3.5 L55.5 12.5 V31.5 C55.5 43.8 45.6 54.6 32 60.5 C18.4 54.6 8.5 43.8 8.5 31.5 V12.5 Z"
+        fill="url(#cgShield)"
+    />
+
+    <!-- Inner shield outline for depth -->
+    <path
+        d="M32 8.2 L50.9 15.4 V31.4 C50.9 41.3 43.1 50.2 32 55.2 C20.9 50.2 13.1 41.3 13.1 31.4 V15.4 Z"
+        fill="none"
+        stroke="#ffffff"
+        stroke-opacity="0.34"
+        stroke-width="1.6"
+    />
+
+    <!-- Keyhole: the detection core -->
+    <circle cx="32" cy="27.5" r="7.4" fill="url(#cgCore)"/>
+    <path
+        d="M28.9 31.2 H35.1 L36.9 46.4 H27.1 Z"
+        fill="url(#cgCore)"
+    />
+
+    <!-- Scan ticks suggesting continuous analysis -->
+    <g stroke="#ffffff" stroke-opacity="0.72" stroke-width="1.7" stroke-linecap="round">
+        <line x1="17.4" y1="22.2" x2="17.4" y2="27.4"/>
+        <line x1="46.6" y1="22.2" x2="46.6" y2="27.4"/>
+        <line x1="32" y1="12.6" x2="32" y2="16.4"/>
+    </g>
+</svg>

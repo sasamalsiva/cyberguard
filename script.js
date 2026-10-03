@@ -141,6 +141,8 @@ async function initializeCyberGuard() {
 
     initializeDigitalImpersonation();
 
+    initializePdfExport();
+
     initializeRawToggles();
 
     initializeOrganisationSettings();
@@ -1124,6 +1126,18 @@ async function analyzeAccountTakeover() {
     }
 }
 
+function storeResultForExport(type, response, meaning, recommendation) {
+
+    window.lastCyberGuardResult = {
+        type,
+        result: response?.result || response,
+        meaning,
+        recommendation
+    };
+
+    setPdfExportReady(type, true);
+}
+
 function renderAccountTakeoverResult(response) {
     const result = response?.result || response;
     const summary = result?.summary || {};
@@ -1171,6 +1185,13 @@ function renderAccountTakeoverResult(response) {
     }
     const raw = $("#takeoverRaw");
     if (raw) raw.textContent = safePrettyPrint(response);
+
+    storeResultForExport(
+        "account_takeover",
+        response,
+        meaning?.textContent,
+        recommendation?.textContent
+    );
 }
 
 function buildTakeoverAccountCard(account) {
@@ -1579,6 +1600,13 @@ function renderImpersonationResult(response) {
 
     const raw = $("#impersonationRaw");
     if (raw) raw.textContent = safePrettyPrint(response);
+
+    storeResultForExport(
+        "digital_impersonation",
+        response,
+        meaning?.textContent,
+        recommendation?.textContent
+    );
 }
 
 function buildImpersonationMessageCard(message) {

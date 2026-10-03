@@ -288,7 +288,7 @@
                                     ACCOUNT TAKEOVER
                                 </span>
 
-                                <strong>IN DEVELOPMENT</strong>
+                                <strong>ACTIVE</strong>
 
                                 <small>
                                     Behavioural detection engine
@@ -296,8 +296,8 @@
 
                             </div>
 
-                            <span class="summary-badge soon-badge">
-                                SOON
+                            <span class="summary-badge active-badge">
+                                LIVE
                             </span>
 
                         </div>
@@ -315,7 +315,7 @@
                                     DIGITAL IMPERSONATION
                                 </span>
 
-                                <strong>IN DEVELOPMENT</strong>
+                                <strong>ACTIVE</strong>
 
                                 <small>
                                     Identity & impersonation analysis
@@ -323,8 +323,8 @@
 
                             </div>
 
-                            <span class="summary-badge soon-badge">
-                                SOON
+                            <span class="summary-badge active-badge">
+                                LIVE
                             </span>
 
                         </div>
@@ -366,10 +366,10 @@
 
                                         <span>READY</span>
 
-                                        <strong>01</strong>
+                                        <strong>03</strong>
 
                                         <small>
-                                            active engine
+                                            active engines
                                         </small>
 
                                     </div>
@@ -379,21 +379,23 @@
                                 <div class="protection-copy">
 
                                     <h4>
-                                        Phishing analysis is ready.
+                                        Three engines are ready.
                                     </h4>
 
                                     <p>
                                         Scan suspicious messages,
                                         deceptive URLs, websites and
-                                        QR codes using the connected
-                                        CyberGuard detection engine.
+                                        QR codes, analyse login
+                                        telemetry, and detect
+                                        impersonation of authorities,
+                                        executives and brands.
                                     </p>
 
                                     <button
                                         class="text-button"
-                                        data-view-target="phishing"
+                                        data-view-target="impersonation"
                                     >
-                                        Open phishing scanner →
+                                        Open impersonation engine →
                                     </button>
 
                                 </div>
@@ -468,8 +470,8 @@
 
                                     </div>
 
-                                    <span class="architecture-state">
-                                        SOON
+                                    <span class="architecture-state live">
+                                        LIVE
                                     </span>
 
                                 </div>
@@ -494,8 +496,8 @@
 
                                     </div>
 
-                                    <span class="architecture-state">
-                                        SOON
+                                    <span class="architecture-state live">
+                                        LIVE
                                     </span>
 
                                 </div>
@@ -1808,72 +1810,143 @@
                 <section
                     class="view"
                     id="view-impersonation"
-                >
-
-                    <div class="page-heading">
-
+                >                    <div class="page-heading phishing-heading">
                         <div>
-
-                            <div class="eyebrow">
-                                THREAT DETECTION / 03
-                            </div>
-
-                            <h2>
-                                Digital Impersonation Detection
-                            </h2>
-
+                            <div class="eyebrow">THREAT DETECTION / 03</div>
+                            <h2>Digital Impersonation Detection</h2>
                             <p>
-                                Detect attempts to impersonate trusted
-                                people, authorities and organisations.
+                                Analyse reported messages and social content to detect impersonation of government officials, senior management, financial institutions, brands and known contacts.
                             </p>
-
                         </div>
 
+                        <div class="engine-pill takeover-engine-pill">
+                            <span></span>
+                            IMPERSONATION ENGINE
+                        </div>
                     </div>
 
+                    <div class="takeover-layout">
+                        <div class="panel takeover-input-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <span class="panel-kicker">MESSAGE ANALYSIS</span>
+                                    <h3>Analyse reported messages</h3>
+                                </div>
+                                <span class="input-counter" id="impersonationMessageCount">0 messages</span>
+                            </div>
 
-                    <div class="coming-soon">
+                            <div class="takeover-info">
+                                <span class="takeover-info-icon">i</span>
+                                <p>
+                                    Upload a CSV of reported messages. CyberGuard checks six impersonation indicators: authority spoofing, executive impersonation, brand impersonation, urgency and pressure tactics, threatening language and credential harvesting.
+                                </p>
+                            </div>
 
-                        <div class="coming-icon">
-                            ◌
+                            <div class="field">
+                                <div class="field-label-row">
+                                    <label>REPORTED MESSAGES — CSV FILE</label>
+                                    <button class="clear-button" id="clearImpersonationMessages" type="button">Clear</button>
+                                </div>
+
+                                <input
+                                    type="file"
+                                    id="impersonationMessagesInput"
+                                    class="takeover-file-input"
+                                    accept=".csv,text/csv"
+                                    hidden
+                                >
+
+                                <label
+                                    for="impersonationMessagesInput"
+                                    class="takeover-upload-box"
+                                    id="impersonationMessagesUploadBox"
+                                >
+                                    <span class="takeover-upload-icon">↑</span>
+                                    <span class="takeover-upload-title">Upload reported messages CSV</span>
+                                    <span class="takeover-upload-subtitle">Choose a .csv file containing reported impersonation messages</span>
+                                    <span class="takeover-upload-button">Choose CSV File</span>
+                                    <span class="takeover-file-name" id="impersonationMessagesFileName">No file selected</span>
+                                </label>
+                            </div>
+
+                            <div class="takeover-actions">
+                                <button class="secondary-button" id="loadImpersonationDemo" type="button">Load Demo Scenario</button>
+                                <button class="scan-button" id="analyzeImpersonationButton" type="button">
+                                    <span class="scan-button-icon">◌</span>
+                                    <span>Analyse Impersonation Risk</span>
+                                    <span class="scan-arrow">→</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <span class="coming-label">
-                            MODULE IN DEVELOPMENT
-                        </span>
+                        <div class="panel takeover-result-panel">
+                            <div class="panel-header">
+                                <div>
+                                    <span class="panel-kicker">ANALYSIS RESULT</span>
+                                    <h3>Impersonation Assessment</h3>
+                                </div>
+                                <span class="result-state" id="impersonationResultState">WAITING</span>
+                            </div>
 
-                        <h3>
-                            Identity & Impersonation Engine
-                        </h3>
+                            <div class="result-empty" id="impersonationResultEmpty">
+                                <div class="empty-icon">◌</div>
+                                <h4>No messages analysed</h4>
+                                <p>Upload reported messages to generate an impersonation assessment.</p>
+                            </div>
 
-                        <p>
-                            This module will focus on suspicious
-                            attempts involving government officials,
-                            senior management, teachers or university
-                            authorities, financial institutions,
-                            organisations, brands and known contacts.
-                        </p>
+                            <div class="takeover-result-content hidden" id="impersonationResultContent">
+                                <div class="takeover-summary-grid">
+                                    <div class="takeover-stat"><span>MESSAGES ANALYSED</span><strong id="impersonationMessagesAnalyzed">0</strong></div>
+                                    <div class="takeover-stat"><span>MESSAGES FLAGGED</span><strong id="impersonationMessagesFlagged">0</strong></div>
+                                    <div class="takeover-stat"><span>DETECTION EVENTS</span><strong id="impersonationDetectionEvents">0</strong></div>
+                                </div>
 
-                        <div class="planned-features">
+                                <div class="takeover-risk-overview">
+                                    <div class="takeover-risk-card high"><span>HIGH RISK</span><strong id="impersonationHighRisk">0</strong></div>
+                                    <div class="takeover-risk-card medium"><span>MEDIUM RISK</span><strong id="impersonationMediumRisk">0</strong></div>
+                                    <div class="takeover-risk-card low"><span>LOW RISK</span><strong id="impersonationLowRisk">0</strong></div>
+                                </div>
 
-                            <span>
-                                Identity signals
-                            </span>
+                                <div class="result-section takeover-accounts-section">
+                                    <div class="result-section-title">MESSAGE RISK ASSESSMENTS</div>
+                                    <div class="takeover-account-list" id="impersonationMessageList"></div>
+                                </div>
 
-                            <span>
-                                Brand impersonation
-                            </span>
+                                <div class="result-section">
+                                    <div class="result-section-title">DETECTION EVENTS</div>
+                                    <div class="takeover-detection-list" id="impersonationDetectionList"></div>
+                                </div>
 
-                            <span>
-                                Authority spoofing
-                            </span>
+                                <div class="result-section" id="impersonationCampaignSection">
+                                    <div class="result-section-title">CAMPAIGN SIGNALS</div>
+                                    <div class="takeover-detection-list" id="impersonationCampaignList"></div>
+                                </div>
 
-                            <span>
-                                Contact impersonation
-                            </span>
+                                <div class="user-guidance">
+                                    <div class="guidance-item">
+                                        <span class="guidance-icon">i</span>
+                                        <div><span class="guidance-label">WHAT THIS MEANS</span><p id="impersonationMeaning">The engine result will be explained here in plain language.</p></div>
+                                    </div>
+                                    <div class="guidance-item recommendation">
+                                        <span class="guidance-icon">→</span>
+                                        <div><span class="guidance-label">RECOMMENDED ACTION</span><p id="impersonationRecommendation">Review flagged messages and verify the sender through a known channel.</p></div>
+                                    </div>
+                                </div>
 
+                                <div class="raw-result">
+                                    <button class="raw-toggle" type="button" data-target="impersonationRaw">View raw engine response <span>+</span></button>
+                                    <pre id="impersonationRaw" class="raw-content hidden"></pre>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
+                    <div class="scope-note takeover-scope-note">
+                        <div class="scope-note-icon">i</div>
+                        <div>
+                            <strong>Reported messages stay the input</strong>
+                            <p>The module analyses the message content reported by the organisation. It does not require an impersonation label; it derives detections and risk from the message text, claimed identity and sender context.</p>
+                        </div>
                     </div>
 
                 </section>

@@ -7,6 +7,11 @@
       "maxDuration": 60,
       "includeFiles": "account_takeover/**"
     },
+    "api/digital_impersonation.py": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "digital_impersonation/**"
+    },
     "api/analyze.js": {
       "memory": 1024,
       "maxDuration": 60

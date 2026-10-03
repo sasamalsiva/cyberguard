@@ -3583,3 +3583,6 @@ body::after {
 .takeover-error-card { background:rgba(239,68,68,.035);border-color:rgba(239,68,68,.13); }.takeover-error-card strong { color:#f87171; }.takeover-scope-note { margin-top:14px; }
 @media (max-width:1100px) { .takeover-layout { grid-template-columns:1fr; } }
 @media (max-width:700px) { .takeover-field-grid,.takeover-actions,.takeover-summary-grid,.takeover-risk-overview { grid-template-columns:1fr; } }
+
+/* Impersonation message excerpt inside a risk card. */
+.takeover-excerpt { margin:8px 0 0; padding:7px 9px; color:var(--text-muted); background:rgba(255,255,255,.015); border-left:2px solid rgba(148,163,184,.22); border-radius:0 6px 6px 0; font-size:8px; line-height:1.6; }

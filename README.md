@@ -1,8 +1,8 @@
 # CyberGuard 🛡️
 
-**AI-powered cyber threat intelligence dashboard** — phishing message / website / QR analysis plus a full **Account Takeover (ATO)** detection engine with per-user risk scoring.
+**AI-powered cyber threat intelligence dashboard** — phishing message / website / QR analysis plus two full behavioural detection engines: **Account Takeover (ATO)** with per-user risk scoring, and **Digital Impersonation** with per-message risk scoring.
 
-Built as a zero-backend-cost, single-domain web app: a static frontend plus two serverless functions on Vercel.
+Built as a zero-backend-cost, single-domain web app: a static frontend plus three serverless functions on Vercel.
 
 ---
 
@@ -39,6 +39,23 @@ Six behavioural detectors run over login telemetry, fused by a weighted risk eng
 - Thresholds: `LOW < 30 ≤ MEDIUM < 70 ≤ HIGH`.
 - Every flagged user is returned with the exact detectors that fired, the raw evidence, and a human-readable risk summary.
 
+### 3. Digital Impersonation Detection Engine
+Six content detectors run over reported messages (SMS, email, chat, social, QR), fused into a single score and a `LOW` / `MEDIUM` / `HIGH` verdict per message.
+
+| # | Detector | What it catches |
+|---|----------|-----------------|
+| 1 | Authority Impersonation | A sender posing as police, tax, court, government or a regulator |
+| 2 | Executive Impersonation | A sender posing as a CEO, director, HR, payroll or university authority |
+| 3 | Brand Impersonation | A message claiming a bank or brand, or sent from a lookalike domain |
+| 4 | Urgency & Pressure Tactics | Coercive deadlines and "do not tell anyone" instructions that block verification |
+| 5 | Threatening Or Extortion Language | Legal, policing or financial threats used to force compliance |
+| 6 | Credential Harvesting Via Impersonation | A trusted-identity claim combined with a request for an OTP, PIN, password or card details |
+
+**Risk engine**
+- Weighted detector contributions plus bonuses for **evidence volume**, **repetition** and **cross-detector correlation** — an identity + pressure + credential-request chain scores highest.
+- Thresholds: `LOW < 30 ≤ MEDIUM < 70 ≤ HIGH`.
+- Returns each flagged message with the detectors that fired, the human-readable reasons, the original message text, and a **campaign view** grouping detections by sender infrastructure.
+
 ---
 
 ## Tech Stack
@@ -47,7 +64,9 @@ Six behavioural detectors run over login telemetry, fused by a weighted risk eng
 |-------|--------|
 | Frontend | Vanilla HTML / CSS / JS (no build step) |
 | ATO engine | Python 3, pandas, custom risk scoring |
+| Impersonation engine | Python 3, pandas, word-boundary keyword matching, custom risk scoring |
 | API (ATO) | FastAPI, deployed as a Vercel Python serverless function |
+| API (impersonation) | FastAPI, deployed as a Vercel Python serverless function |
 | API (proxy) | Node.js serverless function wrapping `@gradio/client` |
 | Hosting | Vercel (static + serverless, one domain) |
 
@@ -61,11 +80,12 @@ Six behavioural detectors run over login telemetry, fused by a weighted risk eng
 ├── style.css                      # Dashboard styling
 ├── script.js                      # Frontend logic + Gradio client
 ├── vercel.json                    # Serverless function config (framework preset disabled)
-├── requirements.txt               # Python deps for the ATO function
+├── requirements.txt               # Python deps for the ATO + impersonation functions
 ├── package.json                   # Node deps for the phishing proxy
 │
 ├── api/
 │   ├── account_takeover.py        # FastAPI app (POST /api/account_takeover)
+│   ├── digital_impersonation.py   # FastAPI app (POST /api/digital_impersonation)
 │   └── analyze.js                 # Node serverless proxy to the HF Space
 │
 ├── account_takeover/
@@ -73,9 +93,16 @@ Six behavioural detectors run over login telemetry, fused by a weighted risk eng
 │   ├── account_takeover_service.py# Pipeline: DataFrames -> JSON report
 │   └── risk_engine.py             # Scoring, bonuses, thresholds
 │
-├── cyberguard_login_events.csv        # Sample telemetry
-├── cyberguard_organisation_profiles.csv # Sample user baselines
-└── test_api_local.py              # Local API regression harness
+├── digital_impersonation/
+│   ├── digital_impersonation_engine.py # The six detectors + campaign grouping
+│   ├── digital_impersonation_service.py# Pipeline: DataFrames -> JSON report
+│   └── risk_engine.py             # Scoring, bonuses, thresholds
+│
+├── cyberguard_login_events.csv        # Sample ATO telemetry
+├── cyberguard_organisation_profiles.csv # Sample ATO user baselines
+├── cyberguard_impersonation_messages.csv # Sample impersonation messages
+├── test_api_local.py              # ATO API regression harness
+└── test_impersonation_local.py    # Impersonation API regression harness
 ```
 
 ---
@@ -122,11 +149,52 @@ Six behavioural detectors run over login telemetry, fused by a weighted risk eng
 
 `GET /api/account_takeover` returns a health check. Empty `events` returns `400`.
 
+### `POST /api/digital_impersonation`
+
+```jsonc
+{
+  "messages": [
+    {
+      "timestamp": "2026-10-03T09:30:00",
+      "message_id": "msg002",
+      "channel": "email",
+      "sender_domain": "sbi-netbanking-alert.xyz",
+      "claimed_identity": "SBI Customer Care",
+      "claimed_role": "security officer",
+      "claimed_organisation": "State Bank of India",
+      "message_text": "Your account will be suspended today. Confirm your OTP and net banking password.",
+      "context": "vendor reported a bank phishing email"
+    }
+  ]
+}
+```
+
+Response:
+
+```jsonc
+{
+  "success": true,
+  "type": "digital_impersonation",
+  "result": {
+    "summary": { "messages_analyzed": 6, "messages_flagged": 6, "high_risk": 6, "medium_risk": 0, "low_risk": 0, "detection_events": 21, "detector_types": 6 },
+    "messages": [ /* per-message risk, verdict, detectors, reasons, original text */ ],
+    "detections": [ /* individual detector events */ ],
+    "campaigns": [ /* detections grouped by sender infrastructure */ ]
+  }
+}
+```
+
+`GET /api/digital_impersonation` returns a health check. Empty `messages` returns `400`.
+
 ### CSV columns
 
 **Events** — `timestamp` *(required)*, `user_id` *(required)*, `login_status`, `ip_address`, `location`, `device`, `session_action`. Optional `event_id` / `session_id` are synthesised when absent.
 
 **Profiles** — `user_id`, `normal_locations`, `known_devices`.
+
+### Impersonation CSV columns
+
+**Messages** — `message_id` *(required)*, `channel`, `sender_name`, `sender_domain`, `claimed_identity`, `claimed_role`, `claimed_organisation`, `message_text`, `context`, `timestamp`. `message_id` is synthesised when absent; the engine also reads the body plus the claimed identity/role/organisation together, so a scam described only in the identity field is still detected.
 
 ---
 
@@ -141,12 +209,28 @@ python -m account_takeover.account_takeover_engine
 
 Reads the two sample CSVs from the project root and prints every detector's output.
 
+### Impersonation engine only (CLI)
+
+```bash
+cd CyberGuard-main
+python -m digital_impersonation.digital_impersonation_engine
+```
+
+Runs a built-in sample through all six impersonation detectors.
+
 ### ATO API
 
 ```bash
 cd CyberGuard-main
 pip install -r requirements.txt
 python -m uvicorn api.account_takeover:app --port 8000
+```
+
+### Impersonation API
+
+```bash
+cd CyberGuard-main
+python -m uvicorn api.digital_impersonation:app --port 8000
 ```
 
 ### Static frontend
@@ -156,16 +240,17 @@ cd CyberGuard-main
 python -m http.server 5173
 ```
 
-Open `http://localhost:5173`. The dashboard calls `/api/account_takeover` on its own origin, so serve the frontend and the API from the same origin (or use the CORS-enabled API on `http://localhost:8000`).
+Open `http://localhost:5173`. The dashboard calls `/api/account_takeover` and `/api/digital_impersonation` on its own origin, so serve the frontend and the API from the same origin (or use the CORS-enabled APIs on `http://localhost:8000`).
 
-### Regression harness
+### Regression harnesses
 
 ```bash
 cd CyberGuard-main
-python test_api_local.py
+python test_api_local.py            # Account takeover
+python test_impersonation_local.py  # Digital impersonation
 ```
 
-Exits `0` when every case passes (demo scenario, missing optional columns, empty payload, both path aliases, CORS preflight).
+Both exit `0` when every case passes. The ATO harness covers the demo scenario, missing optional columns, empty payload, both path aliases and CORS preflight. The impersonation harness additionally asserts that **legitimate business messages are never classified high risk** and that repeated sender infrastructure is clustered into one campaign.
 
 ---
 

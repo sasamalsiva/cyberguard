@@ -82,6 +82,9 @@ const state = {
     takeoverProfiles:
         null,
 
+    impersonationMessages:
+        null,
+
     history:
         [],
 
@@ -135,6 +138,8 @@ async function initializeCyberGuard() {
     initializeQuickActions();
 
     initializeAccountTakeover();
+
+    initializeDigitalImpersonation();
 
     initializeRawToggles();
 
@@ -1221,6 +1226,465 @@ function renderAccountTakeoverError(error) {
 }
 
 window.analyzeAccountTakeover = analyzeAccountTakeover;
+
+
+/* ============================================================
+   DIGITAL IMPERSONATION DETECTION
+   ============================================================ */
+
+function initializeDigitalImpersonation() {
+    const messagesInput = $("#impersonationMessagesInput");
+    const analyzeButton = $("#analyzeImpersonationButton");
+    const demoButton = $("#loadImpersonationDemo");
+    const clearButton = $("#clearImpersonationMessages");
+
+    if (!messagesInput || !analyzeButton) return;
+
+    const setFileName = (id, name, loaded = false) => {
+        const element = $(id);
+        if (!element) return;
+        element.textContent = name || "No file selected";
+        element.classList.toggle("loaded", Boolean(loaded));
+    };
+
+    const updateMessageCount = () => {
+        const count = Array.isArray(state.impersonationMessages)
+            ? state.impersonationMessages.length
+            : 0;
+        const counter = $("#impersonationMessageCount");
+        if (counter) counter.textContent = `${count} message${count === 1 ? "" : "s"}`;
+    };
+
+    const parseCsv = (text) => {
+        const rows = [];
+        let row = [];
+        let cell = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const next = text[i + 1];
+
+            if (char === '"') {
+                if (inQuotes && next === '"') {
+                    cell += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                row.push(cell);
+                cell = "";
+            } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                if (char === '\r' && next === '\n') i++;
+                row.push(cell);
+                cell = "";
+                if (row.some(value => String(value).trim() !== "")) rows.push(row);
+                row = [];
+            } else {
+                cell += char;
+            }
+        }
+
+        if (cell !== "" || row.length) {
+            row.push(cell);
+            if (row.some(value => String(value).trim() !== "")) rows.push(row);
+        }
+
+        if (rows.length < 2) return [];
+
+        const headers = rows[0].map(value => String(value).trim());
+
+        return rows.slice(1).map(values => {
+            const record = {};
+            headers.forEach((header, index) => {
+                if (!header) return;
+                record[header] = (values[index] ?? "").trim();
+            });
+            return record;
+        });
+    };
+
+    const readFile = (file) => {
+        if (!file) return;
+
+        if (!/\.csv$/i.test(file.name)) {
+            showToast(
+                "CSV required",
+                "Please choose a .csv file containing reported messages.",
+                "error"
+            );
+            return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = event => {
+            try {
+                const parsed = parseCsv(String(event.target?.result || ""));
+
+                if (!parsed.length) {
+                    showToast(
+                        "Empty file",
+                        "That CSV did not contain any message rows.",
+                        "error"
+                    );
+                    return;
+                }
+
+                state.impersonationMessages = parsed;
+
+                setFileName(
+                    "#impersonationMessagesFileName",
+                    `${file.name} • ${parsed.length} message${parsed.length === 1 ? "" : "s"}`,
+                    true
+                );
+
+                updateMessageCount();
+                resetImpersonationResult();
+
+                showToast(
+                    "File loaded",
+                    `${parsed.length} reported message${parsed.length === 1 ? "" : "s"} ready to analyse.`,
+                    "success"
+                );
+            } catch (error) {
+                showToast(
+                    "Could not read file",
+                    getErrorMessage(error),
+                    "error"
+                );
+            }
+        };
+
+        reader.onerror = () => {
+            showToast(
+                "File read failed",
+                "CyberGuard could not read the selected CSV file.",
+                "error"
+            );
+        };
+
+        reader.readAsText(file);
+    };
+
+    messagesInput.addEventListener("change", () => {
+        readFile(messagesInput.files?.[0]);
+    });
+
+    const uploadBox = $("#impersonationMessagesUploadBox");
+
+    if (uploadBox) {
+        ["dragenter", "dragover"].forEach(eventName => {
+            uploadBox.addEventListener(eventName, event => {
+                event.preventDefault();
+                event.stopPropagation();
+                uploadBox.classList.add("dragover");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+            uploadBox.addEventListener(eventName, event => {
+                event.preventDefault();
+                event.stopPropagation();
+                uploadBox.classList.remove("dragover");
+            });
+        });
+
+        uploadBox.addEventListener("drop", event => {
+            readFile(event.dataTransfer?.files?.[0]);
+        });
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener("click", () => {
+            state.impersonationMessages = null;
+            messagesInput.value = "";
+            setFileName("#impersonationMessagesFileName", "No file selected");
+            updateMessageCount();
+            resetImpersonationResult();
+        });
+    }
+
+    if (demoButton) demoButton.addEventListener("click", loadImpersonationDemo);
+    analyzeButton.addEventListener("click", analyzeDigitalImpersonation);
+}
+
+function loadImpersonationDemo() {
+    const demoMessages = [
+        {timestamp:"2026-10-03T09:00:00",message_id:"msg001",channel:"sms",sender_name:"Unknown",sender_domain:"",claimed_identity:"Delhi Police Cyber Cell",claimed_role:"police officer",claimed_organisation:"Delhi Police",message_text:"URGENT notice from government of india: a case has been registered against you for money laundering. Your bank account will be frozen within 24 hours. Do not tell anyone about this notice.",context:"employee received on personal mobile"},
+        {timestamp:"2026-10-03T09:30:00",message_id:"msg002",channel:"email",sender_name:"IT Service Desk",sender_domain:"sbi-netbanking-alert.xyz",claimed_identity:"SBI Customer Care",claimed_role:"security officer",claimed_organisation:"State Bank of India",message_text:"Dear valued customer your account will be suspended today. You must confirm your OTP and net banking password immediately or your account will be deactivated. Click here to update KYC now.",context:"vendor reported a bank phishing email"},
+        {timestamp:"2026-10-03T10:00:00",message_id:"msg003",channel:"email",sender_name:"Anil Verma",sender_domain:"",claimed_identity:"",claimed_role:"CEO",claimed_organisation:"",message_text:"This is your CEO. We have a confidential board meeting today. I need you to change the vendor bank details immediately and transfer the advance payment before midnight. Do not discuss this with the finance department.",context:"finance executive received an internal fraud attempt"},
+        {timestamp:"2026-10-03T10:30:00",message_id:"msg004",channel:"sms",sender_name:"Unknown",sender_domain:"",claimed_identity:"Income Tax Department",claimed_role:"tax officer",claimed_organisation:"Income Tax Department",message_text:"Your income tax return is pending and a penalty of 50000 rupees has been imposed. Legal action will be taken if you do not pay immediately. Kindly do not call the department to verify.",context:"staff member reported an SMS scam"},
+        {timestamp:"2026-10-03T11:00:00",message_id:"msg005",channel:"email",sender_name:"HR Admin",sender_domain:"hr-update-portal.top",claimed_identity:"Human Resources",claimed_role:"hr manager",claimed_organisation:"Acme Corporation",message_text:"Attention all employees this is HR. Your salary revision is approved. Share your bank account number and OTP on this secure form to update your payroll records. Click the link below to submit details.",context:"circular email with a lookalike HR portal"},
+        {timestamp:"2026-10-03T11:30:00",message_id:"msg006",channel:"sms",sender_name:"Unknown",sender_domain:"",claimed_identity:"University Examination Cell",claimed_role:"registrar",claimed_organisation:"University Authority",message_text:"Your examination hall ticket is cancelled. Confirm your OTP on http://exam-verify.xyz to reissue the hall ticket before midnight or you will be debarred from the exam.",context:"student reported a verification scam"}
+    ];
+
+    state.impersonationMessages = demoMessages;
+
+    const fileName = $("#impersonationMessagesFileName");
+    if (fileName) {
+        fileName.textContent = `Demo scenario • ${demoMessages.length} messages`;
+        fileName.classList.add("loaded");
+    }
+
+    const counter = $("#impersonationMessageCount");
+    if (counter) counter.textContent = `${demoMessages.length} messages`;
+
+    resetImpersonationResult();
+    showToast(
+        "Demo scenario loaded",
+        "A sample multi-signal impersonation campaign is ready to analyse.",
+        "success"
+    );
+}
+
+async function analyzeDigitalImpersonation() {
+    const messages = state.impersonationMessages;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+        showToast(
+            "Messages required",
+            "Upload a reported messages CSV file before starting the analysis.",
+            "error"
+        );
+        return;
+    }
+
+    setResultState("impersonation", "PROCESSING");
+    showLoading(
+        "Analysing impersonation risk",
+        "CyberGuard is checking identity claims, pressure tactics, threats and credential requests."
+    );
+
+    try {
+        const response = await fetch("/api/digital_impersonation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages })
+        });
+
+        const responseText = await response.text();
+
+        let data = null;
+
+        try {
+            data = responseText ? JSON.parse(responseText) : null;
+        } catch {
+            data = null;
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                data?.detail ||
+                data?.error ||
+                `Digital impersonation analysis failed (HTTP ${response.status}).`
+            );
+        }
+
+        renderImpersonationResult(data);
+        addHistoryEntry({
+            type: "Digital Impersonation",
+            input: `${messages.length} reported messages`,
+            result: summarizeImpersonation(data)
+        });
+
+        showToast(
+            "Analysis complete",
+            "Reported messages have been processed by the CyberGuard impersonation engine.",
+            "success"
+        );
+    } catch (error) {
+        console.error(
+            "[CyberGuard] Digital impersonation analysis failed:",
+            error
+        );
+
+        renderImpersonationError(error);
+
+        showToast(
+            "Analysis failed",
+            getErrorMessage(error),
+            "error"
+        );
+    } finally {
+        hideLoading();
+    }
+}
+
+function renderImpersonationResult(response) {
+    const result = response?.result || response;
+    const summary = result?.summary || {};
+    const messages = Array.isArray(result?.messages) ? result.messages : [];
+    const detections = Array.isArray(result?.detections) ? result.detections : [];
+    const campaigns = Array.isArray(result?.campaigns) ? result.campaigns : [];
+
+    $("#impersonationResultEmpty")?.classList.add("hidden");
+    $("#impersonationResultContent")?.classList.remove("hidden");
+    setResultState("impersonation", "COMPLETE");
+
+    const setText = (id, value) => {
+        const element = $(id);
+        if (element) element.textContent = String(value);
+    };
+
+    setText("#impersonationMessagesAnalyzed", summary.messages_analyzed ?? 0);
+    setText("#impersonationMessagesFlagged", summary.messages_flagged ?? 0);
+    setText("#impersonationDetectionEvents", summary.detection_events ?? detections.length ?? 0);
+    setText("#impersonationHighRisk", summary.high_risk ?? 0);
+    setText("#impersonationMediumRisk", summary.medium_risk ?? 0);
+    setText("#impersonationLowRisk", summary.low_risk ?? 0);
+
+    const messageList = $("#impersonationMessageList");
+    if (messageList) {
+        messageList.innerHTML = messages.length ? "" : `<div class="takeover-no-threat"><span>✓</span><div><strong>No messages were flagged</strong><p>The supplied messages did not produce an impersonation report.</p></div></div>`;
+        messages.forEach(message => messageList.insertAdjacentHTML("beforeend", buildImpersonationMessageCard(message)));
+    }
+
+    const detectionList = $("#impersonationDetectionList");
+    if (detectionList) {
+        detectionList.innerHTML = detections.length ? "" : `<div class="takeover-no-threat compact"><span>✓</span><div><strong>No detector events returned</strong><p>No individual impersonation indicators were triggered.</p></div></div>`;
+        detections.slice(0, 20).forEach(detection => detectionList.insertAdjacentHTML("beforeend", buildTakeoverDetectionCard(detection)));
+    }
+
+    const campaignSection = $("#impersonationCampaignSection");
+    const campaignList = $("#impersonationCampaignList");
+
+    if (campaignSection) {
+        campaignSection.classList.toggle("hidden", campaigns.length === 0);
+    }
+
+    if (campaignList) {
+        campaignList.innerHTML = campaigns.length ? "" : `<div class="takeover-no-threat compact"><span>✓</span><div><strong>No campaign clusters</strong><p>No repeated sender infrastructure was detected.</p></div></div>`;
+        campaigns.forEach(campaign => campaignList.insertAdjacentHTML("beforeend", buildImpersonationCampaignCard(campaign)));
+    }
+
+    const high = Number(summary.high_risk || 0);
+    const medium = Number(summary.medium_risk || 0);
+    const flagged = Number(summary.messages_flagged || 0);
+    const meaning = $("#impersonationMeaning");
+    if (meaning) {
+        if (high > 0) meaning.textContent = `${high} message${high === 1 ? "" : "s"} received a high-risk assessment. The engine found identity, pressure and request signals that strongly indicate impersonation.`;
+        else if (medium > 0) meaning.textContent = `${medium} message${medium === 1 ? "" : "s"} received a medium-risk assessment. The message claims a trusted identity, but the supporting evidence is limited.`;
+        else if (flagged > 0) meaning.textContent = `${flagged} message${flagged === 1 ? "" : "s"} appeared in the report, but none were classified as high or medium risk.`;
+        else meaning.textContent = "No impersonation risk was identified from the supplied messages.";
+    }
+
+    const recommendation = $("#impersonationRecommendation");
+    if (recommendation) {
+        if (high > 0) recommendation.textContent = "Verify high-risk senders through a known contact channel, warn affected staff never to share OTPs or passwords, and block the reported sender addresses.";
+        else if (medium > 0) recommendation.textContent = "Confirm the sender through an official channel before acting, and review whether the message matches any recent internal communication.";
+        else recommendation.textContent = "No immediate impersonation response was indicated. Continue monitoring reported messages and keep awareness training active.";
+    }
+
+    const raw = $("#impersonationRaw");
+    if (raw) raw.textContent = safePrettyPrint(response);
+}
+
+function buildImpersonationMessageCard(message) {
+    const risk = String(message.risk_level || "UNKNOWN").toUpperCase();
+    const riskClass = risk === "HIGH" ? "high" : risk === "MEDIUM" ? "medium" : "low";
+    const detectors = Array.isArray(message.detectors_triggered) ? message.detectors_triggered : [];
+    const reasons = Array.isArray(message.reasons) ? message.reasons : [];
+
+    const claimed = message.claimed_identity || message.claimed_organisation || message.sender_name;
+    const channel = message.channel ? String(message.channel).toUpperCase() : "MESSAGE";
+
+    const detectorHtml = detectors.length
+        ? detectors.map(item => `<span>${escapeHtml(item)}</span>`).join("")
+        : `<span>No detector names returned</span>`;
+
+    const reasonHtml = reasons.length
+        ? reasons.map(item => `<li>${escapeHtml(item)}</li>`).join("")
+        : `<li>No additional evidence returned.</li>`;
+
+    const excerpt = message.message_text
+        ? `<p class="takeover-excerpt">${escapeHtml(String(message.message_text).slice(0, 180))}${String(message.message_text).length > 180 ? "…" : ""}</p>`
+        : "";
+
+    return `
+        <article class="takeover-account-card ${riskClass}">
+            <div class="takeover-account-top"><div><span class="takeover-account-label">${escapeHtml(channel)} · ${escapeHtml(message.message_id ?? "Unknown message")}</span><strong>${escapeHtml(claimed || "Unattributed message")}</strong></div><div class="takeover-risk-badge ${riskClass}">${escapeHtml(risk)} RISK</div></div>
+            <div class="takeover-account-score"><span>RISK SCORE</span><strong>${escapeHtml(message.risk_score ?? 0)}</strong></div>
+            ${excerpt}
+            <div class="takeover-detector-tags">${detectorHtml}</div>
+            <div class="takeover-reasons"><span>WHY IT WAS FLAGGED</span><ul>${reasonHtml}</ul></div>
+        </article>`;
+}
+
+function buildImpersonationCampaignCard(campaign) {
+    const count = campaign.message_count ?? 0;
+    const threats = campaign.threats || "No detector names";
+    const threatList = String(threats)
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
+
+    const threatHtml = threatList.length
+        ? threatList.map(item => `<span>${escapeHtml(item)}</span>`).join("")
+        : `<span>No detector names</span>`;
+
+    return `
+        <div class="takeover-detection-card">
+            <div class="takeover-detection-icon">⌁</div>
+            <div class="takeover-detection-main">
+                <strong>${escapeHtml(campaign.campaign_key ?? "Unknown sender")}</strong>
+                <span>${escapeHtml(String(count))} message${Number(count) === 1 ? "" : "s"} from this sender</span>
+                <div class="takeover-detector-tags">${threatHtml}</div>
+            </div>
+        </div>`;
+}
+
+function summarizeImpersonation(response) {
+    const summary = response?.result?.summary || response?.summary || {};
+    return `${summary.messages_flagged ?? 0} flagged messages / ${summary.detection_events ?? 0} detection events`;
+}
+
+function resetImpersonationResult() {
+    $("#impersonationResultEmpty")?.classList.remove("hidden");
+    $("#impersonationResultContent")?.classList.add("hidden");
+    setResultState("impersonation", "WAITING");
+}
+
+function renderImpersonationError(error) {
+    $("#impersonationResultEmpty")?.classList.add("hidden");
+    $("#impersonationResultContent")?.classList.remove("hidden");
+    setResultState("impersonation", "ERROR");
+
+    [
+        "impersonationMessagesAnalyzed",
+        "impersonationMessagesFlagged",
+        "impersonationDetectionEvents",
+        "impersonationHighRisk",
+        "impersonationMediumRisk",
+        "impersonationLowRisk"
+    ].forEach(id => {
+        const element = $(`#${id}`);
+        if (element) element.textContent = "—";
+    });
+
+    const messageList = $("#impersonationMessageList");
+    if (messageList) {
+        messageList.innerHTML = `<div class="takeover-error-card"><div><strong>Analysis could not be completed</strong><p>${escapeHtml(getErrorMessage(error))}</p></div></div>`;
+    }
+
+    const detectionList = $("#impersonationDetectionList");
+    if (detectionList) detectionList.innerHTML = "";
+
+    const campaignList = $("#impersonationCampaignList");
+    if (campaignList) campaignList.innerHTML = "";
+
+    const meaning = $("#impersonationMeaning");
+    if (meaning) meaning.textContent = "The Digital Impersonation engine could not complete this analysis.";
+
+    const recommendation = $("#impersonationRecommendation");
+    if (recommendation) recommendation.textContent = "Check the API deployment and input format, then retry the analysis.";
+
+    const raw = $("#impersonationRaw");
+    if (raw) raw.textContent = error?.stack || String(error);
+}
+
+window.analyzeDigitalImpersonation = analyzeDigitalImpersonation;
 
 
 /* ============================================================

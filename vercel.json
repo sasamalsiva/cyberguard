@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {
+    "api/account_takeover.py": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "account_takeover/**"
+    },
+    "api/analyze.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}

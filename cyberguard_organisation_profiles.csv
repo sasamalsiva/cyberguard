@@ -1,0 +1,9 @@
+user_id,normal_locations,known_devices
+user001,Bhubaneswar,Edge-Windows
+user002,Bhubaneswar,Chrome-Windows
+user003,Cuttack,Chrome-Windows
+user004,Bhubaneswar,Safari-Mac
+user005,Puri,Chrome-Windows
+user006,Bhubaneswar,Chrome-Windows
+user007,Bhubaneswar,Chrome-Windows
+user008,Cuttack,Safari-Mac

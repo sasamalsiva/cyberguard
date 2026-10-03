@@ -1,0 +1,15 @@
+timestamp,user_id,login_status,ip_address,location,device,session_action
+2026-10-03T09:58:00,user001,success,198.51.100.24,Bhubaneswar,Edge-Windows,login_success
+2026-10-03T10:00:00,user001,failed,203.0.113.10,Unknown City,Chrome-Windows,login_failed
+2026-10-03T10:01:00,user001,failed,203.0.113.10,Unknown City,Chrome-Windows,login_failed
+2026-10-03T10:02:00,user001,failed,203.0.113.10,Unknown City,Chrome-Windows,login_failed
+2026-10-03T10:03:00,user001,failed,203.0.113.10,Unknown City,Chrome-Windows,login_failed
+2026-10-03T10:04:00,user001,failed,203.0.113.10,Unknown City,Chrome-Windows,login_failed
+2026-10-03T10:05:00,user002,failed,203.0.113.10,Unknown City,Firefox-Linux,login_failed
+2026-10-03T10:06:00,user003,failed,203.0.113.10,Unknown City,Firefox-Linux,login_failed
+2026-10-03T10:07:00,user004,failed,203.0.113.10,Unknown City,Firefox-Linux,login_failed
+2026-10-03T10:08:00,user005,failed,203.0.113.10,Unknown City,Firefox-Linux,login_failed
+2026-10-03T10:09:00,user006,success,203.0.113.10,Unknown City,Unknown-Mobile,privileged_action
+2026-10-03T10:10:00,user006,success,203.0.113.10,Unknown City,Unknown-Mobile,privileged_action
+2026-10-03T10:12:00,user007,success,198.51.100.77,Bhubaneswar,Chrome-Windows,login_success
+2026-10-03T10:15:00,user008,success,198.51.100.91,Cuttack,Safari-Mac,login_success

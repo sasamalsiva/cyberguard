@@ -279,6 +279,22 @@ function initializeNavigation() {
                     );
                 }
             );
+
+            button.addEventListener(
+                "keydown",
+                event => {
+
+                    if (event.key !== "Enter" && event.key !== " ") {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    navigateTo(
+                        button.dataset.viewTarget
+                    );
+                }
+            );
         }
     );
 }
@@ -503,18 +519,110 @@ function initializeQuickActions() {
     const openPhishingButton =
         $("#openPhishingButton");
 
+    const newAnalysisModal =
+        $("#newAnalysisModal");
+
+    const closeNewAnalysisButton =
+        $("#closeNewAnalysisButton");
+
+    const openNewAnalysisModal = () => {
+
+        if (!newAnalysisModal) {
+            return;
+        }
+
+        newAnalysisModal.classList.remove("hidden");
+        newAnalysisModal.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        document.body.style.overflow = "hidden";
+
+        closeNewAnalysisButton?.focus();
+    };
+
+    const closeNewAnalysisModal = () => {
+
+        if (!newAnalysisModal) {
+            return;
+        }
+
+        newAnalysisModal.classList.add("hidden");
+        newAnalysisModal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+        document.body.style.overflow = "";
+    };
+
     if (openPhishingButton) {
 
         openPhishingButton.addEventListener(
             "click",
-            () => {
-
-                navigateTo("phishing");
-
-                activateAnalysis("message");
-            }
+            openNewAnalysisModal
         );
     }
+
+    closeNewAnalysisButton?.addEventListener(
+        "click",
+        closeNewAnalysisModal
+    );
+
+    $$('[data-new-analysis-close]').forEach(
+        element => {
+
+            element.addEventListener(
+                "click",
+                closeNewAnalysisModal
+            );
+        }
+    );
+
+    $$("[data-new-analysis]").forEach(
+        option => {
+
+            option.addEventListener(
+                "click",
+                () => {
+
+                    const target =
+                        option.dataset.newAnalysis;
+
+                    if (!target) {
+                        return;
+                    }
+
+                    closeNewAnalysisModal();
+
+                    navigateTo(target);
+
+                    if (target === "phishing") {
+
+                        activateAnalysis(
+                            option.dataset.analysis ||
+                            "message"
+                        );
+                    }
+                }
+            );
+        }
+    );
+
+    document.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key === "Escape" &&
+                newAnalysisModal &&
+                !newAnalysisModal.classList.contains("hidden")
+            ) {
+                closeNewAnalysisModal();
+            }
+        }
+    );
 }
 
 
@@ -1253,20 +1361,28 @@ window.analyzeAccountTakeover = analyzeAccountTakeover;
    DIGITAL IMPERSONATION DETECTION
    ============================================================ */
 
+function buildImpersonationMessage(sender, messageText) {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sender);
+    const isPhone = /^\+?[\d\s()-]{7,}$/.test(sender);
+
+    return {
+        timestamp: new Date().toISOString(),
+        message_id: `msg-${Date.now().toString(36)}`,
+        channel: isEmail ? "email" : isPhone ? "sms" : "",
+        sender_name: sender || "Unknown sender",
+        sender_domain: isEmail ? sender.split("@")[1] : "",
+        message_text: messageText,
+        context: "reported by the organisation"
+    };
+}
+
 function initializeDigitalImpersonation() {
-    const messagesInput = $("#impersonationMessagesInput");
+    const senderInput = $("#impersonationSenderInput");
+    const messageInput = $("#impersonationMessageInput");
     const analyzeButton = $("#analyzeImpersonationButton");
     const demoButton = $("#loadImpersonationDemo");
-    const clearButton = $("#clearImpersonationMessages");
 
-    if (!messagesInput || !analyzeButton) return;
-
-    const setFileName = (id, name, loaded = false) => {
-        const element = $(id);
-        if (!element) return;
-        element.textContent = name || "No file selected";
-        element.classList.toggle("loaded", Boolean(loaded));
-    };
+    if (!senderInput || !messageInput || !analyzeButton) return;
 
     const updateMessageCount = () => {
         const count = Array.isArray(state.impersonationMessages)
@@ -1276,156 +1392,22 @@ function initializeDigitalImpersonation() {
         if (counter) counter.textContent = `${count} message${count === 1 ? "" : "s"}`;
     };
 
-    const parseCsv = (text) => {
-        const rows = [];
-        let row = [];
-        let cell = "";
-        let inQuotes = false;
+    const syncFromFields = () => {
+        const sender = senderInput.value.trim();
+        const messageText = messageInput.value.trim();
 
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            const next = text[i + 1];
+        state.impersonationMessages =
+            sender && messageText
+                ? [buildImpersonationMessage(sender, messageText)]
+                : null;
 
-            if (char === '"') {
-                if (inQuotes && next === '"') {
-                    cell += '"';
-                    i++;
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (char === ',' && !inQuotes) {
-                row.push(cell);
-                cell = "";
-            } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                if (char === '\r' && next === '\n') i++;
-                row.push(cell);
-                cell = "";
-                if (row.some(value => String(value).trim() !== "")) rows.push(row);
-                row = [];
-            } else {
-                cell += char;
-            }
-        }
-
-        if (cell !== "" || row.length) {
-            row.push(cell);
-            if (row.some(value => String(value).trim() !== "")) rows.push(row);
-        }
-
-        if (rows.length < 2) return [];
-
-        const headers = rows[0].map(value => String(value).trim());
-
-        return rows.slice(1).map(values => {
-            const record = {};
-            headers.forEach((header, index) => {
-                if (!header) return;
-                record[header] = (values[index] ?? "").trim();
-            });
-            return record;
-        });
+        updateMessageCount();
+        resetImpersonationResult();
     };
 
-    const readFile = (file) => {
-        if (!file) return;
-
-        if (!/\.csv$/i.test(file.name)) {
-            showToast(
-                "CSV required",
-                "Please choose a .csv file containing reported messages.",
-                "error"
-            );
-            return;
-        }
-
-        const reader = new FileReader();
-
-        reader.onload = event => {
-            try {
-                const parsed = parseCsv(String(event.target?.result || ""));
-
-                if (!parsed.length) {
-                    showToast(
-                        "Empty file",
-                        "That CSV did not contain any message rows.",
-                        "error"
-                    );
-                    return;
-                }
-
-                state.impersonationMessages = parsed;
-
-                setFileName(
-                    "#impersonationMessagesFileName",
-                    `${file.name} • ${parsed.length} message${parsed.length === 1 ? "" : "s"}`,
-                    true
-                );
-
-                updateMessageCount();
-                resetImpersonationResult();
-
-                showToast(
-                    "File loaded",
-                    `${parsed.length} reported message${parsed.length === 1 ? "" : "s"} ready to analyse.`,
-                    "success"
-                );
-            } catch (error) {
-                showToast(
-                    "Could not read file",
-                    getErrorMessage(error),
-                    "error"
-                );
-            }
-        };
-
-        reader.onerror = () => {
-            showToast(
-                "File read failed",
-                "CyberGuard could not read the selected CSV file.",
-                "error"
-            );
-        };
-
-        reader.readAsText(file);
-    };
-
-    messagesInput.addEventListener("change", () => {
-        readFile(messagesInput.files?.[0]);
+    [senderInput, messageInput].forEach(input => {
+        input.addEventListener("input", syncFromFields);
     });
-
-    const uploadBox = $("#impersonationMessagesUploadBox");
-
-    if (uploadBox) {
-        ["dragenter", "dragover"].forEach(eventName => {
-            uploadBox.addEventListener(eventName, event => {
-                event.preventDefault();
-                event.stopPropagation();
-                uploadBox.classList.add("dragover");
-            });
-        });
-
-        ["dragleave", "drop"].forEach(eventName => {
-            uploadBox.addEventListener(eventName, event => {
-                event.preventDefault();
-                event.stopPropagation();
-                uploadBox.classList.remove("dragover");
-            });
-        });
-
-        uploadBox.addEventListener("drop", event => {
-            readFile(event.dataTransfer?.files?.[0]);
-        });
-    }
-
-    if (clearButton) {
-        clearButton.addEventListener("click", () => {
-            state.impersonationMessages = null;
-            messagesInput.value = "";
-            setFileName("#impersonationMessagesFileName", "No file selected");
-            updateMessageCount();
-            resetImpersonationResult();
-        });
-    }
 
     if (demoButton) demoButton.addEventListener("click", loadImpersonationDemo);
     analyzeButton.addEventListener("click", analyzeDigitalImpersonation);
@@ -1443,19 +1425,20 @@ function loadImpersonationDemo() {
 
     state.impersonationMessages = demoMessages;
 
-    const fileName = $("#impersonationMessagesFileName");
-    if (fileName) {
-        fileName.textContent = `Demo scenario • ${demoMessages.length} messages`;
-        fileName.classList.add("loaded");
-    }
+    const senderInput = $("#impersonationSenderInput");
+    const messageInput = $("#impersonationMessageInput");
+    const sample = demoMessages[1] || demoMessages[0] || {};
+
+    if (senderInput) senderInput.value = sample.sender_name || "";
+    if (messageInput) messageInput.value = sample.message_text || "";
 
     const counter = $("#impersonationMessageCount");
-    if (counter) counter.textContent = `${demoMessages.length} messages`;
+    if (counter) counter.textContent = `${demoMessages.length} messages (demo)`;
 
     resetImpersonationResult();
     showToast(
         "Demo scenario loaded",
-        "A sample multi-signal impersonation campaign is ready to analyse.",
+        `${demoMessages.length} reported messages are ready to analyse. Editing either field analyses only that message.`,
         "success"
     );
 }
@@ -1464,11 +1447,33 @@ async function analyzeDigitalImpersonation() {
     const messages = state.impersonationMessages;
 
     if (!Array.isArray(messages) || messages.length === 0) {
-        showToast(
-            "Messages required",
-            "Upload a reported messages CSV file before starting the analysis.",
-            "error"
-        );
+        const senderElement = $("#impersonationSenderInput");
+        const messageElement = $("#impersonationMessageInput");
+        const sender = (senderElement?.value || "").trim();
+        const messageText = (messageElement?.value || "").trim();
+
+        if (!sender && !messageText) {
+            showToast(
+                "Sender and message required",
+                "Enter the reported sender and paste the message before starting the analysis.",
+                "error"
+            );
+            senderElement?.focus();
+        } else if (!sender) {
+            showToast(
+                "Sender required",
+                "Enter the sender name or address before starting the analysis.",
+                "error"
+            );
+            senderElement?.focus();
+        } else {
+            showToast(
+                "Message required",
+                "Paste the reported message before starting the analysis.",
+                "error"
+            );
+            messageElement?.focus();
+        }
         return;
     }
 
@@ -1556,10 +1561,18 @@ function renderImpersonationResult(response) {
     setText("#impersonationMediumRisk", summary.medium_risk ?? 0);
     setText("#impersonationLowRisk", summary.low_risk ?? 0);
 
+    const submittedMessages = Array.isArray(state.impersonationMessages) ? state.impersonationMessages : [];
+    const senderLookup = new Map(
+        submittedMessages.map(message => [
+            String(message.message_id ?? ""),
+            message.sender_name || ""
+        ])
+    );
+
     const messageList = $("#impersonationMessageList");
     if (messageList) {
         messageList.innerHTML = messages.length ? "" : `<div class="takeover-no-threat"><span>✓</span><div><strong>No messages were flagged</strong><p>The supplied messages did not produce an impersonation report.</p></div></div>`;
-        messages.forEach(message => messageList.insertAdjacentHTML("beforeend", buildImpersonationMessageCard(message)));
+        messages.forEach(message => messageList.insertAdjacentHTML("beforeend", buildImpersonationMessageCard(message, senderLookup)));
     }
 
     const detectionList = $("#impersonationDetectionList");
@@ -1609,13 +1622,14 @@ function renderImpersonationResult(response) {
     );
 }
 
-function buildImpersonationMessageCard(message) {
+function buildImpersonationMessageCard(message, senderLookup) {
     const risk = String(message.risk_level || "UNKNOWN").toUpperCase();
     const riskClass = risk === "HIGH" ? "high" : risk === "MEDIUM" ? "medium" : "low";
     const detectors = Array.isArray(message.detectors_triggered) ? message.detectors_triggered : [];
     const reasons = Array.isArray(message.reasons) ? message.reasons : [];
 
-    const claimed = message.claimed_identity || message.claimed_organisation || message.sender_name;
+    const submittedSender = senderLookup?.get(String(message.message_id ?? "")) || "";
+    const claimed = message.claimed_identity || message.claimed_organisation || message.sender_name || submittedSender || message.sender_domain;
     const channel = message.channel ? String(message.channel).toUpperCase() : "MESSAGE";
 
     const detectorHtml = detectors.length
